@@ -1,0 +1,707 @@
+
+
+NoteBook Details
+----------------
+title: " Arrhythmia Analysis R Notebook"
+output: html_notebook
+Created By: Swati Dhami
+
+
+INTRODUCTION
+-------------
+Heart rhythm problems (heart arrhythmias) occur when the electrical impulses that coordinate your heartbeats don't work properly, causing your heart to beat too fast, too slow or irregularly.
+
+Medical practitioners have collected the heartbeat frequencies of various patients and have labeled them with either having arrhythmia or not having arrhythmia. I have downloaded the dataset from UCI Dataset Repository .
+
+We as the data mining practitioners are asked to construct a predictive model to automatically determine whether a given patient has this disease or not. In particular, there are 15 types of arrhythmia. Hence, we have
+to build a model to predict 16 classes in total (15 Class Corresponding to Types of Arrhythmia and 1 from
+Patients without the disease).
+
+# Data Preprocessing
+
+Load the dataset
+-----------------
+```{r}
+data = read.csv("arrhythmia.csv", header = FALSE)
+
+```
+
+```{r}
+View(data) ############## we can also use head(data) if we want to observe only starting few records
+```
+
+Checking for missing values
+---------------------------
+
+This module checks for the missing values and prints columns with missing values
+
+```{r}
+
+data = read.csv("arrhythmia.csv", header=FALSE, na.strings="?")
+
+c = 0
+for(current_column in 1: ncol(data)){
+count_missing_here = nrow(subset(data, is.na(data[, current_column])))
+if(count_missing_here!=0) {
+print(paste("Missing Values in Column ", current_column, "is", count_missing_here))
+c = c+1
+}
+}
+print(paste("In total we have", c, "columns with missing values"))
+```
+
+In total there are 5 columns with missing values and we can see that column 14 has 376 missing values
+
+We can remove the missing values for column 14, as it represents some vector angle J which might be costly to retrieve
+
+
+Removing columns with more Missing Values
+-----------------------------------------
+```{r}
+#Removing missing values
+data = data[,-14]
+
+```
+
+Identifying missing columns, we can see that V11,V12,V13,V15 still hold missing values (miniscule values)
+
+```{r}
+
+colSums(is.na(data))
+
+```
+
+
+Imputation of multiple columns (i.e. whole data frame)
+------------------------------------------------------
+```{r}
+for(i in 1:ncol(data)) {
+  data[ , i][is.na(data[ , i])] <- median(data[ , i], na.rm = TRUE)
+}
+
+head(data) # Checking first few rows after substitution by mean
+```
+
+```{r}
+#install.packages("UpSetR")
+#install.packages("naniar")
+```
+
+
+```{r}
+# Find the number of missing values using upSetR package
+library(naniar)
+n_var_miss(data)
+```
+
+```{r}
+#Overall percentage of missing values
+library(naniar)
+
+vis_miss(data)
+```
+
+Give column names to the data as the original dataset does not have any column names in it
+
+```{r}
+names(data) = c("Age","Sex","Height","Weight","QRS_Dur",
+"P_R_Int","Q_T_Int","T_Int","P_Int","QRS","T","P","QRST","Heart_Rate",
+"Q_Wave","R_Wave","S_Wave","R1_Wave","S1_Wave","Int_Def","Rag_R_Nom",
+"Diph_R_Nom","Rag_P_Nom","Diph_P_Nom","Rag_T_Nom","Diph_T_Nom", 
+"DII00", "DII01","DII02", "DII03", "DII04","DII05","DII06","DII07","DII08","DII09","DII10","DII11",
+"DIII00","DIII01","DIII02", "DIII03", "DIII04","DIII05","DIII06","DIII07","DIII08","DIII09","DIII10","DIII11",
+"AVR00","AVR01","AVR02","AVR03","AVR04","AVR05","AVR06","AVR07","AVR08","AVR09","AVR10","AVR11",
+"AVL00","AVL01","AVL02","AVL03","AVL04","AVL05","AVL06","AVL07","AVL08","AVL09","AVL10","AVL11",
+"AVF00","AVF01","AVF02","AVF03","AVF04","AVF05","AVF06","AVF07","AVF08","AVF09","AVF10","AVF11",
+"V100","V101","V102","V103","V104","V105","V106","V107","V108","V109","V110","V111",
+"V200","V201","V202","V203","V204","V205","V206","V207","V208","V209","V210","V211",
+"V300","V301","V302","V303","V304","V305","V306","V307","V308","V309","V310","V311",
+"V400","V401","V402","V403","V404","V405","V406","V407","V408","V409","V410","V411",
+"V500","V501","V502","V503","V504","V505","V506","V507","V508","V509","V510","V511",
+"V600","V601","V602","V603","V604","V605","V606","V607","V608","V609","V610","V611",
+"JJ_Wave","Amp_Q_Wave","Amp_R_Wave","Amp_S_Wave","R_Prime_Wave","S_Prime_Wave","P_Wave","T_Wave",
+"QRSA","QRSTA","DII170","DII171","DII172","DII173","DII174","DII175","DII176","DII177","DII178","DII179",
+"DIII180","DIII181","DIII182","DIII183","DIII184","DIII185","DIII186","DIII187","DIII188","DIII189",
+"AVR190","AVR191","AVR192","AVR193","AVR194","AVR195","AVR196","AVR197","AVR198","AVR199",
+"AVL200","AVL201","AVL202","AVL203","AVL204","AVL205","AVL206","AVL207","AVL208","AVL209",
+"AVF210","AVF211","AVF212","AVF213","AVF214","AVF215","AVF216","AVF217","AVF218","AVF219",
+"V1220","V1221","V1222","V1223","V1224","V1225","V1226","V1227","V1228","V1229",
+"V2230","V2231","V2232","V2233","V2234","V2235","V2236","V2237","V2238","V2239",
+"V3240","V3241","V3242","V3243","V3244","V3245","V3246","V3247","V3248","V3249",
+"V4250","V4251","V4252","V4253","V4254","V4255","V4256","V4257","V4258","V4259",
+"V5260","V5261","V5262","V5263","V5264","V5265","V5266","V5267","V5268","V5269",
+"V6270","V6271","V6272","V6273","V6274","V6275","V6276","V6277","V6278","V6279","Y")
+```
+
+Viewing the data after renaming the columns
+```{r}
+View(data)
+```
+
+
+```{r}
+# Gets all the column names 
+names(data)
+```
+Here, the last column is the response or predictor variable.
+
+# Basic EDA (histogram of predictor class)
+```{r}
+# EDA 
+library(ggplot2)
+
+plot = ggplot(data,aes(x=data[,ncol(data)]))
+
+# At some labels
+
+plot = plot + labs(title = "Class Distribution of
+Arrhythmia Dataset",
+                   y = "Number of People with the Disease",
+                   x = "Arrhythmia Type")
+
+# Visualize this plot as histogram
+
+plot + geom_histogram(binwidth=.5)
+
+hist(data[, ncol(data)])
+
+# From the plot we can say that, there are a lot of people without the disease
+```
+
+Coverting the y column from numeric to categorical
+
+```{r}
+data$Y <- factor(data$Y,levels=c(1,2,3,4,5,6,7,8,9,10,14,15,16),
+                 labels = c(1,2,3,4,5,6,7,8,9,10,14,15,16))
+
+################# Here we can even just write data$Y = factor(data$Y) I think. This way we need not explicitly mention the levels and labels. Based on the available labels it will directly create the factors.
+```
+
+```{r}
+table(data$Y)
+```
+
+# Modeling
+
+```{r}
+#install.packages("caret")
+```
+
+```{r}
+
+library(caret) # we are using this library just to create data partition. There are few other methods also which involve some sampling techniques.
+```
+
+Creating Data Partition
+------------------------
+
+```{r}
+set.seed(123) # we set seed before running random methods. here createDataPartition is a random sampling method which gives different results for each run. To get same result every time, we pass some random number into set.seed function so that everytime we run the below code, it gives same output.
+trainIndex <- createDataPartition(data$Y,p=.75,list=F,times=1)
+######## The above command is from Caret library it takes in a column based on which it creates a list of indexes
+######## by skipping few rows randomly such that the column values of given column at these row indexes will have ######## approximately the p percentage of values. Here it is .75. List = F if this is not specified you will get the ######## values in a list format. and time is number of such samples you want. The default is 1 so you can even remove ######## the parameter. 
+head(trainIndex)
+data_train <- data[trainIndex,] #### This command takes subset of data with the indexes which we generated
+data_test <- data[-trainIndex,] #### This command takes subset of data without the indexes we generated
+table(data_train$Y) ### We are checking frequencies of all the factors to find how the split happened
+table(data_test$Y) ## if you see factor 2. 44 values were divided into 33 and 11 i.e. 75 percentage split. Whereever it is possible it divides for 75 percentage. If not the best possible will be used.
+```
+
+# Random forest classifier
+
+```{r}
+#install.packages("randomForest")
+library(randomForest)
+```
+
+
+```{r}
+set.seed(37) # Random forest is a random process that creates many random trees with subsets of values from the data and then calculates output from the average of the number of trees it generated. Hence to get same result every time, you have to set.seed before running randomForest.
+output <- randomForest(Y~. , data = data_train, importance = TRUE)
+
+# Y~. represents the formula being used.
+# if you have x1,x2,x3,y as cols in your dataset y~. represents y is approximately equal to ax1+bx2+cx3. So now the model will perform estimation of a, b and c values to get better y value that results in minimized error.
+# Sometimes you may want to use only few dependent variables. Then you can write y~x1+x2 or else y~.-x3 this will remove x3 from calculation. you can use - sign to eliminate the variable from being used in the formula.
+# Next you have to mention the data which you are going to use for training.
+# importance = TRUE makes sure that the importance data was stored while training.
+# Now importance means How important a variable/column is in creating the model. There are two importances 1. Accuracy Based 2. Gini Impurity Based.
+######## Accuracy Based: while creating a randomforest, the model takes subset of data with few rows and few columns and create a tree out of it. It creates numerous trees of such a kind. As the columns are also changing across the trees, for each case The below process happens
+# - suppose we have 5 column data. with 100 rows. 
+# my first tree is built using 2 columns and 60 rows.
+# once the tree is trained using 2 columns and 60 rows. it is tested by predicting accuracy of the tree on the same 2 columns but 40 left out rows.
+# After predicting accuracy, to check importance of a column, suppose if I want imp of 1st column, then from the dataset of 2 columns and 40 rows on which accuracy was predicted, the 40 rows of 1st column are randomly shuffled making an absurd dataset. (only values of 1st column are shuffled. 2nd column values are kept in the same way). Now this is a new dataset of 2 columns and 40 rows. but with changed values only pertaining to 1st column.
+# now if we predict accuracy on this model. We will get a reduced accuracy because the rules that were built while creating the tree are different from the current one. 
+# for example while creating the tree, it found that people with high experience will have chance to get high salary. 
+# like for <2 years sal of 20000, for between 3 to 5 40000 and >5 50000 something like this.
+# now when I shuffle the data of experience column, it becomes useless that a person with sal of 50000 might get assigned experience of <2 years. So while predicting our model makes a mistake and the accuracy will go down.
+# This decrease in the accuracy will be calculated. Like this the same column might appear in different set of trees. And in each case the decrease in accuracy over the test set after shuffling the data and before shuffling the data were calculated. and the mean is taken. This is called Mean decrease in accuracy.
+# The more important the column is the drastic drop in accuracy you will find while calculating the accuracy after shuffling the data.
+# In this we are focusing on this Mean Decrease in Accuracy value to check the importance. 
+# There is one more type of importance based on Gini Impurity. Which you can read about or else may be you can ask me later. I'll explain.
+
+# there are many other randomforest parameters which we didn't pass in the above command.
+# few important parameters to consider are ntree it is the number of random trees to be created. The default value is 100.
+# mtry. it is the number of variables to be considered for each tree. Default is sqrt(number of variables in dataset)
+# nodesize. it is the minimum size of the terminal nodes. that is how far the tree has to be grown before stopping. Default value is 1. i.e. until we get a single final rule to explain all the rows we have to grow the tree. We can set this value to a higher number to avoid overfitting and fast calculation.
+```
+
+```{r}
+print(output) # so output contains the random forest model we are printing this.
+```
+
+```{r}
+#install.packages("e1071") 
+```
+
+
+```{r}
+pred <- predict(output,data_test) # so here we are predicting the classes using output (ie randomForest model) and test datset.
+confusionMatrix(pred,data_test$Y)
+```
+
+# Selecting top 10-20% variables based on mean decrease in accuracy
+
+```{r}
+
+imp <- as.data.frame(importance(output,type = 1)) # here type=1 states mean decrease in accuracy. if 2 is given then it states mean decrease in gini impurity. if none is given then both values are returned.
+imp <- cbind(Varibles = row.names(imp),imp) # creating a new dataframe by binding variable names and MDIA
+row.names(imp) <- 1:nrow(imp)
+imp_sort <- as.data.frame(imp[order(-imp$MeanDecreaseAccuracy),]) # sorting in decreasing order using MDIA - sign indicates descending order.
+head(imp_sort,n=10) 
+```
+
+```{r}
+top_20 <- imp_sort[1:100,]
+top_20 <- top_20[order(as.numeric(row.names(top_20))),]
+top_var <- as.character(top_20$Varibles)
+head(data[top_var])
+```
+
+```{r}
+top_data_train <- data_train[c(top_var,'Y')] # creating a training dataset using the top variables selected along with the target variable
+top_data_test <- data_test[c(top_var,'Y')]
+head(top_data_test)
+head(top_data_train)
+
+```
+
+# Creating SVM model
+
+```{r}
+
+library(e1071)
+#Fitting the model
+c_svm = svm(formula = Y ~ .,
+                 data = top_data_train,
+                 type = 'C-classification',
+                 kernel = 'linear')
+
+# this is an SVM model The formula is just as explained in case of randomforest model.
+# type indicates what are you going to do. it takes different values
+# - C-classification, nu-classification,(c and nu classifications are used for normal classification problems. I have to study in detail about what this c and nu meant.) one-classification (this is used when you are performing anomaly detection), eps-regression,nu-regression (these both are used for regressions)
+# kernel- it is the type of kernel we use to identify the boundary and separate the datapoints.
+# it can take the following values linear, polynomial,radial and sigmoid
+# if we want more on SVM about its working and all may be I can explain it later when you want.
+```
+
+```{r}
+print(c_svm)
+```
+
+```{r}
+y_pred = predict(c_svm,top_data_test)
+confusionMatrix(y_pred,top_data_test$Y)
+```
+
+# SVM Radial
+```{r}
+c_svm1 = svm(formula = Y ~ .,
+                 data = top_data_train,
+                 type = 'C-classification',
+                 kernel = 'radial') # as mentioned that there are different kernels, we are using radial here.
+
+print(c_svm1)
+y_pred1 = predict(c_svm1,top_data_test)
+confusionMatrix(y_pred1,top_data_test$Y)
+```
+
+```{r}
+c_svm2 = svm(formula = Y ~ .,
+                 data = top_data_train,
+                 type = 'C-classification',
+                 kernel = 'polynomial')
+
+print(c_svm2)
+y_pred2 = predict(c_svm2,top_data_test)
+confusionMatrix(y_pred2,top_data_test$Y)
+```
+
+#svm sigmoid
+
+```{r}
+c_svm3 = svm(formula = Y ~ .,
+                 data = top_data_train,
+                 type = 'C-classification',
+                 kernel = 'sigmoid')
+
+print(c_svm3)
+y_pred3 = predict(c_svm3,top_data_test)
+confusionMatrix(y_pred3,top_data_test$Y)
+
+```
+
+```{r}
+c_svm4 = svm(formula = Y ~ .,
+                 data = top_data_train,
+                 type = 'C-classification',
+                 kernel = 'radial',gamma = 0.1,coef0=0.1) 
+
+# There are few other parameters to be considered
+#degree - parameter needed for kernel of type polynomial (default: 3)
+#gamma - parameter needed for all kernels except linear (default: 1/(data dimension))
+#coef0 - parameter needed for kernels of type polynomial and sigmoid (default: 0)
+#nu - parameter needed for nu-classification, nu-regression, and one-classification
+
+
+print(c_svm4)
+y_pred4 = predict(c_svm4,top_data_test)
+confusionMatrix(y_pred4,top_data_test$Y)
+```
+Try using best svm and altering gamma and coef0 parameters which might increase the accuracy of the model  so we can try with few other parameters
+We can also explore the option of tune.model in R to hyper tune our parameters further 
+
+```{r}
+c_svm4 = svm(formula = Y ~ .,
+                 data = top_data_train,
+                 type = 'C-classification',
+                 kernel = 'radial',gamma = 0.01,coef0=0.1)
+
+print(c_svm4)
+y_pred4 = predict(c_svm4,top_data_test)
+confusionMatrix(y_pred4,top_data_test$Y)
+```
+
+# Adaboost Model
+```{r}
+#install.packages("adabag")
+library(adabag)
+```
+
+```{r}
+c_ada = boosting(Y~.,data = top_data_train)
+```
+
+```{r}
+ada_pred = predict(c_ada,top_data_test)
+print(ada_pred$confusion)
+```
+
+#create models by changing the number of trees (mfinal option)
+```{r}
+c_ada1 = boosting(Y~.,data=top_data_train,mfinal=700)
+ada_pred1 = predict(c_ada1,top_data_test)
+print(ada_pred1$confusion)
+print(ada_pred1$error)
+```
+
+# Decision Tree
+
+```{r}
+c_rpart = rpart(Y~.,data = top_data_train,method = "class")
+
+# rpart is the standard decision tree model in R.
+# method variable can be removed. if removed the model automatically chooses a best method
+# these are available methods
+# "anova" for regression, "poisson" for poisson distribution analysis i.e. number of events/unit time
+# "class" for classification and "exp" for survival analysis
+# other imp parameters to consider are control which takes a set of controls like below
+# rpart.control(minsplit = 20,cp = 0.01, xval = 10, maxdepth = 30)
+# The other one is parms in which we can pass the loss matrix for classification. This parms takes different values for different types of problems(regression,poisson etc.)
+```
+
+```{r}
+rpart_pred = predict(c_rpart,top_data_test,type = "class")
+confusionMatrix(rpart_pred,top_data_test$Y)
+```
+
+# Working on Imbalanced Dataset manually and using ROSE package
+
+Creating an Imbalanced Dataset
+--------------------------------
+
+```{r}
+table(data$Y)
+```
+
+Using the above data let us try to create an imbalanced dataset and work on it.
+
+we can see that we have 245 1s and 50 10s so let us create a dataset using just these two classes
+
+
+```{r}
+imbal_data = data[data[,'Y']==1 | data[,'Y']==10,] # extracting data with only 1s and 10s
+```
+
+```{r}
+table(imbal_data$Y)
+```
+
+```{r}
+imbal_data$Y = factor(imbal_data$Y) # rebuilding factor levels
+```
+
+```{r}
+table(imbal_data$Y)
+```
+```{r}
+# creating data partitions
+set.seed(123)
+trainIndex <- createDataPartition(imbal_data$Y,p=.75,list=F,times=1)
+head(trainIndex)
+imdata_train <- imbal_data[trainIndex,]
+imdata_test <- imbal_data[-trainIndex,]
+table(imdata_train$Y)
+table(imdata_test$Y)
+```
+
+
+```{r}
+# created a generic randomforest model to run on the new dataset and predicted results
+set.seed(37)
+imb_out <- randomForest(Y~. , data = imdata_train, importance = TRUE)
+print(imb_out)
+pred <- predict(imb_out,imdata_test)
+cm_rf<- confusionMatrix(pred,imdata_test$Y)
+cm_rf
+# got 91.7 accuracy
+```
+```{r}
+# Saving confusion matrix for random forest model
+save("cm_rf",file= "confusion_matrix.rda")
+```
+
+# Using cost matrix
+```{r}
+rf_cost_matrix = matrix(c(0,1,10,0),byrow = T,nrow = 2) # this is the cost matrix 
+# it should have a zero diagonal and the costs associated with misclassification
+# because we have an order of TP,FP,FN,TN so we don't penalize model if TP and TN occurs
+# we just have to penalize for FP and FN and especially FN will be penalized heavily becausing telling a cancer patient that he don't have cancer is more dangerous than telling a non cancer patient as cancer patient.
+# so you can set your own costs associated. I've set it to 1 and 10
+rf_cost_matrix # below is the cost matrix
+
+
+set.seed(37)
+rf1 = randomForest(Y~.,data=imdata_train,ntree=200,importance=T,parms=list(loss=rf_cost_matrix))
+print(rf1)
+pred1 <- predict(rf1,imdata_test)
+confusionMatrix(pred1,imdata_test$Y)
+# the cost matrix didn't make any difference in this ca
+```
+```{r}
+library(PRROC)
+plot(pr.curve(pred1,imdata_test$Y, curve=TRUE))
+plot(roc.curve(pred1,imdata_test$Y,curve = TRUE))
+```
+
+There are many other methods to handle imbalanced dataset one such that can be used in randomforests and decision trees are giving prior probabilities i.e we tell the model on before hand that this is the probability of observing the classes in the data. i.e. my model will have 90 percent 1s and 10 percent 0s etc.
+
+```{r}
+set.seed(37)
+rf2 = randomForest(Y~.,data=imdata_train,ntree=200,importance=T,parms=list(prior=c(184/222,38/222))) # we have 184 1s and 38 10s
+print(rf2)
+pred2 <- predict(rf2,imdata_test)
+confusionMatrix(pred2,imdata_test$Y)
+```
+Still no change may be the data is not sufficient enough that the change in values are being nullified in averaging process of random forest.
+
+#let us test this using rpart
+
+```{r}
+rp1_cost_matrix = matrix(c(0,1,1,0), byrow=TRUE, nrow=2)
+rp1 = rpart(Y~.,data = imdata_train,method = "class",parms = list(loss=rp1_cost_matrix)) # with same cost for both FP and FN
+rp1_pred = predict(rp1,imdata_test,type = "class")
+confusionMatrix(rp1_pred,imdata_test$Y)
+```
+```{r}
+plot(pr.curve(rp1_pred,imdata_test$Y,curve = TRUE))
+plot(roc.curve(rp1_pred,imdata_test$Y,curve = TRUE))
+```
+# Trying adaboost model using cost matrix gives slightly better results
+
+```{r}
+rp3_cost_matrix = matrix(c(0,1,1,0), byrow=TRUE, nrow=2)
+rp3_boost = boosting(Y~.,data = imdata_train,boos= TRUE,mfinal = 700,parms = list(loss=rp1_cost_matrix)) # with same cost for both FP and FN
+rp3_pred = predict(rp3_boost,imdata_test)
+
+```
+
+```{r}
+confusionMatrix(imdata_test$Y,as.factor(rp3_pred$class))
+```
+```{r}
+
+plot(pr.curve(imdata_test$Y,as.factor(rp3_pred$class),curve=TRUE))
+plot(roc.curve(imdata_test$Y,as.factor(rp3_pred$class),curve=TRUE))
+
+```
+
+
+```{r}
+#rp2_cost_matrix = matrix(c(0,1,5,0), byrow=TRUE, nrow=2) # with varied cost
+#rp2_cost_matrix
+#rp2 = rpart(Y~.,data = imdata_train,method = "class",parms = list(loss=rp2_cost_matrix))
+#rp2_pred = predict(rp2,imdata_test,type = "class")
+#confusionMatrix(rp2_pred,imdata_test$Y,positive = '10') # by mentioning positive = 10 the metrics gets swapped. By default the model considers first class as positive and other as negative.
+```
+
+This cost matrix has altered the results slightly in rpart model. However we can notice a very small difference due to the sample size.
+
+```{r}
+# rpart with prior probabilities
+#rp3 = rpart(Y~.,data = imdata_train,method = "class",parms = #list(prior=c(184/222,38/222))) # with same cost for both FP and FN
+#rp3_pred = predict(rp3,imdata_test,type = "class")
+#confusionMatrix(rp3_pred,imdata_test$Y)
+# there is no much difference in the data.
+```
+
+USING ROSE AND SMOTE PACKAGE FOR ARTIFICAL DATA GENERATION
+
+#ROSE
+
+```{r}
+#install.packages("ROSE")
+library(ROSE)
+```
+
+
+```{r}
+nw_data = ROSE(Y~.,data=imdata_train,seed = 37)$data
+table(nw_data$Y)
+
+```
+
+```{r}
+rp_rose = rpart(Y~.,data=nw_data,method = "class")
+rose_pred = predict(rp_rose,imdata_test,type = "class")
+cf_rpart_bal<-confusionMatrix(rose_pred,imdata_test$Y)
+cf_rpart_bal
+
+```
+
+```{r}
+plot(pr.curve(rose_pred,imdata_test$Y,curve = TRUE))
+plot(roc.curve(rose_pred,imdata_test$Y,curve = TRUE))
+```
+
+Basically our data is good enough for the model to get better accuracies. You can use Kappa score to check the variabilities associated with each model. This kappa score gives accuracy based on imbalance of the data.
+
+#Binary classification
+
+if you convert all the other classes into a single factor you can convert this into binary classification
+
+Converting the problem into a binary classification problem
+------------------------------------------------------------
+
+Now let us convert the above problem into a binary classification problem by just taking two classes
+
+1: No-Disease
+0: Arrhythmia (This contains all the 15 classes of disease)
+
+Let us load the above processed data into a new dataframe and convert classes to just 0 and 1
+
+```{r}
+bin_data = data.frame(data)
+head(bin_data)
+```
+
+```{r}
+table(bin_data$Y)
+```
+
+```{r}
+levels(bin_data$Y) = c(levels(bin_data$Y),0)
+bin_data[bin_data[,"Y"]!=1,]$Y = 0
+```
+
+```{r}
+table(bin_data$Y)
+```
+
+```{r}
+bin_data$Y = factor(bin_data$Y)
+```
+
+```{r}
+table(bin_data$Y)
+```
+Now we got a good balanced dataset on which we can run models and get roc curves
+
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(bin_data$Y,p=.75,list=F,times=1)
+head(trainIndex)
+bindata_train <- bin_data[trainIndex,]
+bindata_test <- bin_data[-trainIndex,]
+table(bindata_train$Y)
+table(bindata_test$Y)
+```
+
+```{r}
+rp_model = rpart(Y~.,data=bindata_train,method='class')
+rp_pred = predict(rp_model,bindata_test,type = "class")
+confusionMatrix(rp_pred,bindata_test$Y)
+```
+
+
+
+```{r}
+plot(roc.curve(bindata_test$Y,rp_pred,curve = TRUE))
+plot(pr.curve(bindata_test$Y,rp_pred,curve = TRUE))
+```
+```{r}
+rp4_cost_matrix = matrix(c(0,1,1,0), byrow=TRUE, nrow=2) # with varied cost
+rp4_model = boosting(Y~.,data=bindata_train,boos= TRUE,mfinal=500,parms=list(loss=rp4_cost_matrix))
+rp4_pred = predict(rp_model,bindata_test,type = "class")
+confusionMatrix(rp4_pred,bindata_test$Y)
+
+```
+```{r}
+plot(roc.curve(bindata_test$Y,rp4_pred,curve = TRUE))
+plot(pr.curve(bindata_test$Y,rp4_pred,curve = TRUE))
+```
+#synthetic minority oversampling technique (SMOTE) is a powerful and widely used method. SMOTE algorithm creates artificial data based on feature space (rather than data space) similarities from minority samples
+
+# Installing DMwR for using SMOTE function
+```{r}
+#install.packages("DMwR")
+library(DMwR)
+
+nw_data1 = SMOTE(Y~.,data=imdata_train,seed = 37)$data
+table(nw_data$Y)
+```
+
+
+```{r}
+nw_data1<- SMOTE(Y~.,data = imdata_train, perc.over = 250, k=5, perc.under = 300)
+table(nw_data1$Y)
+
+```
+
+```{r}
+rp_smote = boosting(Y~.,data=nw_data1,boos = TRUE,mfinal=1000)
+smote_pred = predict(rp_smote,imdata_test)
+confusionMatrix(imdata_test$Y,as.factor(smote_pred$class))
+
+
+```
+
+```{r}
+plot(pr.curve(imdata_test$Y,as.factor(smote_pred$class),curve = TRUE))
+plot(rocs.curve(imdata_test$Y,as.factor(smote_pred$class),curve = TRUE))
+
+
+```
+
+
+
+
